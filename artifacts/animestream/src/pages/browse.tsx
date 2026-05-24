@@ -29,7 +29,7 @@ const GENRES = [
   { value: "40", label: "Психологическое" },
 ];
 
-const YEARS = Array.from({ length: 15 }, (_, i) => String(new Date().getFullYear() - i));
+const YEARS = Array.from({ length: new Date().getFullYear() - 1959 }, (_, i) => String(new Date().getFullYear() - i));
 
 const TYPES = [
   { value: "anime-serial", label: "Сериал" },
