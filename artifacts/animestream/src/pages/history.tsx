@@ -100,7 +100,7 @@ export default function History() {
 
               <div className="flex items-center gap-2 ml-auto shrink-0">
                 <Link
-                  href={`/watch/${encodeURIComponent(item.animeId)}/1/1`}
+                  href={`/watch/${encodeURIComponent(item.animeId)}/${item.episode}/1`}
                   className="flex items-center gap-1.5 px-2 md:px-3 py-1.5 rounded-lg bg-primary/20 hover:bg-primary/30 text-primary text-xs font-medium transition-colors opacity-0 group-hover:opacity-100"
                   data-testid={`button-resume-${item.id}`}
                 >

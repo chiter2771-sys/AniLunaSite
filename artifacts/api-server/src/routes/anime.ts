@@ -50,11 +50,14 @@ function getCurrentSeason(): { season: string; year: number } {
 
 router.get("/anime", async (req, res): Promise<void> => {
   try {
-    const { limit = "20", genres, year, type, status, season, sort, order } = req.query as Record<string, string>;
+    const { page = "1", limit = "20", genres, year, type, status, season, sort, order } = req.query as Record<string, string>;
     const limitNum = Math.min(parseInt(limit), 100);
+    const pageNum = Math.max(parseInt(page || "1") || 1, 1);
 
-    const data = await kodikList({ limit: limitNum * 2, genres, year, type, status, season, sort, order });
-    const deduped = deduplicateByShikimoriId(data.results).slice(0, limitNum);
+    const data = await kodikList({ limit: Math.min(limitNum * pageNum * 2, 200), genres, year, type, status, season, sort, order });
+    const dedupedAll = deduplicateByShikimoriId(data.results);
+    const start = (pageNum - 1) * limitNum;
+    const deduped = dedupedAll.slice(start, start + limitNum);
 
     res.json({
       results: deduped.map(mapKodikResultToAnime),
@@ -176,10 +179,10 @@ router.get("/anime/schedule", async (req, res): Promise<void> => {
 
     const seen = new Set<number>();
     const results = (data.data ?? [])
-      .filter((a) => a.type === "TV" && !seen.has(a.mal_id) && seen.add(a.mal_id) !== undefined)
+            .filter((a) => (!a.type || a.type.toUpperCase() === "TV") && !seen.has(a.mal_id) && seen.add(a.mal_id) !== undefined)
       .map((a) => ({
         mal_id: a.mal_id,
-        title: a.title,
+        title: a.title_english ?? a.title,
         title_english: a.title_english ?? null,
         poster: a.images?.webp?.image_url ?? a.images?.jpg?.image_url ?? null,
         score: a.score ?? null,
