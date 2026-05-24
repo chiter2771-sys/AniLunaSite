@@ -1,8 +1,8 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  User, Star, MessageSquare, Trophy, Clock, BookMarked,
-  Edit2, Check, X, Camera, Upload, LogOut, Calendar,
+  Star, MessageSquare, Trophy, Clock, BookMarked,
+  Edit2, Check, X, Camera, Upload, Calendar,
 } from "lucide-react";
 import {
   useGetProfile, useGetUserStats, useUpdateProfile,
@@ -59,7 +59,10 @@ function ImageUploadButton({
         onChange={async (e) => {
           const file = e.target.files?.[0];
           if (!file) return;
-          if (file.size > 5 * 1024 * 1024) return;
+          if (file.size > 5 * 1024 * 1024) {
+            e.target.value = "";
+            return;
+          }
           const b64 = await fileToBase64(file);
           onUpload(b64);
           e.target.value = "";
