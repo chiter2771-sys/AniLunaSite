@@ -1,5 +1,5 @@
 import { useParams, Link } from "wouter";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { translateGenre } from "@/lib/genres";
 import {
@@ -237,6 +237,10 @@ export default function AnimeDetail() {
   const { data: related } = useGetRelatedAnime(kodikId, {
     query: { enabled: !!kodikId, queryKey: getGetRelatedAnimeQueryKey(kodikId) },
   });
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+  }, [kodikId]);
 
   const addToLibrary = useAddToLibrary();
   const [showAllEpisodes, setShowAllEpisodes] = useState(false);

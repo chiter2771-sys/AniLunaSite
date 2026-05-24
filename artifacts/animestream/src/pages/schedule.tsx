@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { translateGenre } from "@/lib/genres";
+import { customFetch } from "@workspace/api-client-react";
 
 interface ScheduleAnimeItem {
   mal_id: number;
@@ -64,9 +65,7 @@ const TODAY_MAP: Record<number, string> = {
 
 async function fetchDaySchedule(day: string): Promise<ScheduleAnimeItem[]> {
   const filter = DAY_FILTER[day];
-  const res = await fetch(`/api/anime/schedule${filter ? `?day=${filter}` : ""}`);
-  if (!res.ok) throw new Error("Failed to fetch");
-  const data = await res.json() as { results: ScheduleAnimeItem[] };
+  const data = await customFetch<{ results: ScheduleAnimeItem[] }>(`/api/anime/schedule${filter ? `?day=${filter}` : ""}`);
   return data.results;
 }
 

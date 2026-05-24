@@ -32,17 +32,14 @@ const GENRES = [
 const YEARS = Array.from({ length: 15 }, (_, i) => String(new Date().getFullYear() - i));
 
 const TYPES = [
-  { value: "tv", label: "Сериал" },
-  { value: "movie", label: "Фильм" },
-  { value: "ova", label: "OVA" },
-  { value: "ona", label: "ONA" },
-  { value: "special", label: "Спешл" },
+  { value: "anime-serial", label: "Сериал" },
+  { value: "anime", label: "Фильм" },
 ];
 
 const STATUSES = [
-  { value: "airing", label: "Выходит" },
-  { value: "complete", label: "Завершён" },
-  { value: "upcoming", label: "Анонс" },
+  { value: "ongoing", label: "Выходит" },
+  { value: "released", label: "Завершён" },
+  { value: "anons", label: "Анонс" },
 ];
 
 export default function Browse() {

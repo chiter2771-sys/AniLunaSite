@@ -28,8 +28,10 @@ export default function Watch() {
   const { toast } = useToast();
 
   const kodikId = decodeURIComponent(rawId ?? "");
-  const episode = parseInt(rawEp ?? "1");
-  const translationId = parseInt(rawTrans ?? "1");
+  const parsedEpisode = Number.parseInt(rawEp ?? "1", 10);
+  const parsedTranslationId = Number.parseInt(rawTrans ?? "1", 10);
+  const episode = Number.isFinite(parsedEpisode) && parsedEpisode > 0 ? parsedEpisode : 1;
+  const translationId = Number.isFinite(parsedTranslationId) && parsedTranslationId > 0 ? parsedTranslationId : 1;
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -38,6 +40,7 @@ export default function Watch() {
   const saveProgressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentTimeRef = useRef(0);
   const durationRef = useRef(0);
+  const lastSavedAtRef = useRef(0);
 
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -89,6 +92,8 @@ export default function Watch() {
     const video = videoRef.current;
     if (!video || !activeQualityUrl || isIframePlayer) return;
 
+    setBuffering(true);
+
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
@@ -104,10 +109,19 @@ export default function Watch() {
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           video.play().catch(() => {});
         });
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          if (data.fatal) {
+            toast({ title: "Ошибка воспроизведения", description: "Не удалось загрузить поток", variant: "destructive" });
+            setBuffering(false);
+          }
+        });
         hlsRef.current = hls;
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = url;
         video.play().catch(() => {});
+      } else {
+        toast({ title: "Поток не поддерживается", variant: "destructive" });
+        setBuffering(false);
       }
     } else if (!isIframePlayer) {
       video.src = url;
@@ -129,7 +143,7 @@ export default function Watch() {
         hlsRef.current = null;
       }
     };
-  }, [activeQualityUrl, kodikId, episode, isIframePlayer, streamType]);
+  }, [activeQualityUrl, kodikId, episode, isIframePlayer, streamType, toast]);
 
   // Video events
   useEffect(() => {
@@ -184,27 +198,43 @@ export default function Watch() {
   }, [currentTime, duration, nextEp]);
 
   // Save progress to API every 30s using refs to avoid stale closure
+  const persistProgress = useCallback(() => {
+    if (!anime || durationRef.current === 0 || currentTimeRef.current < 5) return;
+    const now = Date.now();
+    if (now - lastSavedAtRef.current < 10_000) return;
+    lastSavedAtRef.current = now;
+    saveProgress.mutate({
+      data: {
+        animeId: kodikId,
+        animeTitle: anime.title,
+        animePoster: anime.poster ?? undefined,
+        episode,
+        position: currentTimeRef.current,
+        duration: durationRef.current,
+      },
+    });
+  }, [anime, saveProgress, kodikId, episode]);
+
   useEffect(() => {
     if (!anime || !playing || durationRef.current === 0) return;
 
     saveProgressInterval.current = setInterval(() => {
-      if (!anime || durationRef.current === 0) return;
-      saveProgress.mutate({
-        data: {
-          animeId: kodikId,
-          animeTitle: anime.title,
-          animePoster: anime.poster ?? undefined,
-          episode,
-          position: currentTimeRef.current,
-          duration: durationRef.current,
-        },
-      });
-    }, 30000);
+      persistProgress();
+    }, 15000);
 
     return () => {
       if (saveProgressInterval.current) clearInterval(saveProgressInterval.current);
     };
-  }, [playing, anime, kodikId, episode]);
+  }, [playing, anime, persistProgress]);
+
+  useEffect(() => {
+    const onBeforeUnload = () => persistProgress();
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      persistProgress();
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [persistProgress]);
 
   // Fullscreen listener
   useEffect(() => {
@@ -228,11 +258,19 @@ export default function Watch() {
         case "ArrowUp": e.preventDefault(); setVolume((v) => { const nv = Math.min(1, v + 0.1); video.volume = nv; return nv; }); break;
         case "ArrowDown": e.preventDefault(); setVolume((v) => { const nv = Math.max(0, v - 0.1); video.volume = nv; return nv; }); break;
         case "n": if (nextEp) goNextEpisode(); break;
+        case "Escape": setShowSidebar(false); setShowTranslationPicker(false); setShowQualityPicker(false); break;
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [nextEp]);
+
+  useEffect(() => {
+    return () => {
+      if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+      if (saveProgressInterval.current) clearInterval(saveProgressInterval.current);
+    };
+  }, []);
 
   const resetControlsTimeout = useCallback(() => {
     setShowControls(true);
@@ -405,6 +443,7 @@ export default function Watch() {
           ))}
         </div>
       </div>
+      {showSidebar && <button className="absolute inset-0 z-20" onClick={() => setShowSidebar(false)} aria-label="Закрыть список серий" />}
 
       {/* Controls overlay — simplified for iframe, full for HLS */}
       <div
@@ -613,6 +652,13 @@ export default function Watch() {
         <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/90 gap-4">
           <div className="w-14 h-14 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
           <p className="text-white/60 text-sm">Загрузка...</p>
+        </div>
+      )}
+
+      {!streamLoading && !stream?.url && (
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/90 gap-3 px-4 text-center">
+          <p className="text-white font-semibold">Поток недоступен</p>
+          <p className="text-white/60 text-sm">Попробуйте выбрать другую озвучку или эпизод.</p>
         </div>
       )}
     </div>
