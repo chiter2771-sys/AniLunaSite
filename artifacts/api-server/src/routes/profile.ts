@@ -48,10 +48,42 @@ router.put("/profile", async (req, res): Promise<void> => {
   }
 
   const updates: Partial<{ username: string; avatar: string; banner: string; bio: string }> = {};
-  if (parsed.data.username) updates.username = parsed.data.username;
+  if (parsed.data.username) {
+    const normalizedUsername = parsed.data.username.trim();
+    if (!normalizedUsername) {
+      res.status(400).json({ error: "Username cannot be empty" });
+      return;
+    }
+    updates.username = normalizedUsername;
+  }
   if (parsed.data.avatar !== undefined) updates.avatar = parsed.data.avatar;
   if (parsed.data.banner !== undefined) updates.banner = parsed.data.banner;
-  if (parsed.data.bio !== undefined) updates.bio = parsed.data.bio;
+  if (parsed.data.bio !== undefined) updates.bio = parsed.data.bio.trim();
+
+  if (Object.keys(updates).length === 0) {
+    const [currentUser] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
+
+    if (!currentUser) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    res.json({
+      id: currentUser.id,
+      username: currentUser.username,
+      avatar: currentUser.avatar,
+      banner: currentUser.banner,
+      bio: currentUser.bio,
+      level: currentUser.level,
+      xp: currentUser.xp,
+      createdAt: currentUser.createdAt.toISOString(),
+    });
+    return;
+  }
 
   const [updated] = await db
     .update(usersTable)

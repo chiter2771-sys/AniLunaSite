@@ -62,17 +62,26 @@ function AnimeRow({
 }
 
 function HeroBanner() {
-  const { data: trending, isLoading } = useGetTrending(
+  const { data: trending, isLoading, isError } = useGetTrending(
     { limit: 5 },
     { query: { queryKey: getGetTrendingQueryKey({ limit: 5 }) } }
   );
 
   const hero = trending?.results?.[0];
 
-  if (isLoading || !hero) {
+  if (isLoading) {
     return (
       <div className="relative h-[55vh] min-h-[360px] bg-muted animate-pulse flex items-end">
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+      </div>
+    );
+  }
+
+  if (isError || !hero) {
+    return (
+      <div className="relative h-[55vh] min-h-[360px] bg-muted/30 flex items-end">
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+        <div className="relative z-10 px-4 md:px-8 pb-10 text-white/70 text-sm">Не удалось загрузить главный баннер. Проверьте API подключение.</div>
       </div>
     );
   }
@@ -193,15 +202,15 @@ function ContinueWatching() {
 }
 
 export default function Home() {
-  const { data: trending, isLoading: trendingLoading } = useGetTrending(
+  const { data: trending, isLoading: trendingLoading, isError: trendingError } = useGetTrending(
     { limit: 12 },
     { query: { queryKey: getGetTrendingQueryKey({ limit: 12 }) } }
   );
-  const { data: seasonal, isLoading: seasonalLoading } = useGetSeasonal(
+  const { data: seasonal, isLoading: seasonalLoading, isError: seasonalError } = useGetSeasonal(
     { limit: 12 },
     { query: { queryKey: getGetSeasonalQueryKey({ limit: 12 }) } }
   );
-  const { data: newReleases, isLoading: newReleasesLoading } = useGetNewReleases(
+  const { data: newReleases, isLoading: newReleasesLoading, isError: newReleasesError } = useGetNewReleases(
     { limit: 12 },
     { query: { queryKey: getGetNewReleasesQueryKey({ limit: 12 }) } }
   );
@@ -211,6 +220,14 @@ export default function Home() {
       <HeroBanner />
 
       <div className="relative z-10 -mt-4">
+        {(trendingError || seasonalError || newReleasesError) && (
+          <div className="px-4 md:px-8 mb-6">
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+              Не удалось загрузить часть данных. Проверьте <code className="font-mono">VITE_API_BASE_URL</code> и доступность API-сервера.
+            </div>
+          </div>
+        )}
+
         <ContinueWatching />
 
         <AnimeRow

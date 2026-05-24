@@ -7,6 +7,23 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+const corsOriginEnv = process.env.CORS_ORIGIN?.trim() ?? "";
+const configuredOrigins = corsOriginEnv
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+function isAllowedOrigin(origin: string): boolean {
+  if (configuredOrigins.includes(origin)) return true;
+
+  // Railway fallback: allow animestream -> api-server cross-origin calls
+  if (origin.endsWith(".up.railway.app") && origin.includes("animestream")) {
+    return true;
+  }
+
+  return false;
+}
+
 app.use(
   pinoHttp({
     logger,
@@ -27,7 +44,20 @@ app.use(
   }),
 );
 app.use(cors({
-  origin: true,
+  origin(origin, cb) {
+    // Allow non-browser and same-origin server-to-server calls
+    if (!origin) {
+      cb(null, true);
+      return;
+    }
+
+    if (isAllowedOrigin(origin)) {
+      cb(null, origin);
+      return;
+    }
+
+    cb(new Error("Not allowed by CORS"));
+  },
   credentials: true,
 }));
 app.use(cookieParser());
