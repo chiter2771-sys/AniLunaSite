@@ -40,6 +40,7 @@ export default function Watch() {
   const saveProgressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentTimeRef = useRef(0);
   const durationRef = useRef(0);
+  const lastSavedAtRef = useRef(0);
 
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -197,27 +198,43 @@ export default function Watch() {
   }, [currentTime, duration, nextEp]);
 
   // Save progress to API every 30s using refs to avoid stale closure
+  const persistProgress = useCallback(() => {
+    if (!anime || durationRef.current === 0 || currentTimeRef.current < 5) return;
+    const now = Date.now();
+    if (now - lastSavedAtRef.current < 10_000) return;
+    lastSavedAtRef.current = now;
+    saveProgress.mutate({
+      data: {
+        animeId: kodikId,
+        animeTitle: anime.title,
+        animePoster: anime.poster ?? undefined,
+        episode,
+        position: currentTimeRef.current,
+        duration: durationRef.current,
+      },
+    });
+  }, [anime, saveProgress, kodikId, episode]);
+
   useEffect(() => {
     if (!anime || !playing || durationRef.current === 0) return;
 
     saveProgressInterval.current = setInterval(() => {
-      if (!anime || durationRef.current === 0) return;
-      saveProgress.mutate({
-        data: {
-          animeId: kodikId,
-          animeTitle: anime.title,
-          animePoster: anime.poster ?? undefined,
-          episode,
-          position: currentTimeRef.current,
-          duration: durationRef.current,
-        },
-      });
-    }, 30000);
+      persistProgress();
+    }, 15000);
 
     return () => {
       if (saveProgressInterval.current) clearInterval(saveProgressInterval.current);
     };
-  }, [playing, anime, kodikId, episode]);
+  }, [playing, anime, persistProgress]);
+
+  useEffect(() => {
+    const onBeforeUnload = () => persistProgress();
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      persistProgress();
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [persistProgress]);
 
   // Fullscreen listener
   useEffect(() => {
@@ -241,6 +258,7 @@ export default function Watch() {
         case "ArrowUp": e.preventDefault(); setVolume((v) => { const nv = Math.min(1, v + 0.1); video.volume = nv; return nv; }); break;
         case "ArrowDown": e.preventDefault(); setVolume((v) => { const nv = Math.max(0, v - 0.1); video.volume = nv; return nv; }); break;
         case "n": if (nextEp) goNextEpisode(); break;
+        case "Escape": setShowSidebar(false); setShowTranslationPicker(false); setShowQualityPicker(false); break;
       }
     };
     window.addEventListener("keydown", onKey);
@@ -425,6 +443,7 @@ export default function Watch() {
           ))}
         </div>
       </div>
+      {showSidebar && <button className="absolute inset-0 z-20" onClick={() => setShowSidebar(false)} aria-label="Закрыть список серий" />}
 
       {/* Controls overlay — simplified for iframe, full for HLS */}
       <div
