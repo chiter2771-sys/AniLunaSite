@@ -5,7 +5,8 @@ import { setBaseUrl } from "@workspace/api-client-react";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 if (typeof apiBaseUrl === "string" && apiBaseUrl.trim() !== "") {
-  setBaseUrl(apiBaseUrl);
+  const normalized = apiBaseUrl.trim().replace(/\/+$/, "").replace(/\/api$/, "");
+  setBaseUrl(normalized);
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
