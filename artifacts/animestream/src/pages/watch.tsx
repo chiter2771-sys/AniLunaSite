@@ -28,8 +28,10 @@ export default function Watch() {
   const { toast } = useToast();
 
   const kodikId = decodeURIComponent(rawId ?? "");
-  const episode = parseInt(rawEp ?? "1");
-  const translationId = parseInt(rawTrans ?? "1");
+  const parsedEpisode = Number.parseInt(rawEp ?? "1", 10);
+  const parsedTranslationId = Number.parseInt(rawTrans ?? "1", 10);
+  const episode = Number.isFinite(parsedEpisode) && parsedEpisode > 0 ? parsedEpisode : 1;
+  const translationId = Number.isFinite(parsedTranslationId) && parsedTranslationId > 0 ? parsedTranslationId : 1;
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -89,6 +91,8 @@ export default function Watch() {
     const video = videoRef.current;
     if (!video || !activeQualityUrl || isIframePlayer) return;
 
+    setBuffering(true);
+
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
@@ -104,10 +108,19 @@ export default function Watch() {
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           video.play().catch(() => {});
         });
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          if (data.fatal) {
+            toast({ title: "Ошибка воспроизведения", description: "Не удалось загрузить поток", variant: "destructive" });
+            setBuffering(false);
+          }
+        });
         hlsRef.current = hls;
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = url;
         video.play().catch(() => {});
+      } else {
+        toast({ title: "Поток не поддерживается", variant: "destructive" });
+        setBuffering(false);
       }
     } else if (!isIframePlayer) {
       video.src = url;
@@ -129,7 +142,7 @@ export default function Watch() {
         hlsRef.current = null;
       }
     };
-  }, [activeQualityUrl, kodikId, episode, isIframePlayer, streamType]);
+  }, [activeQualityUrl, kodikId, episode, isIframePlayer, streamType, toast]);
 
   // Video events
   useEffect(() => {
@@ -233,6 +246,13 @@ export default function Watch() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [nextEp]);
+
+  useEffect(() => {
+    return () => {
+      if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+      if (saveProgressInterval.current) clearInterval(saveProgressInterval.current);
+    };
+  }, []);
 
   const resetControlsTimeout = useCallback(() => {
     setShowControls(true);
@@ -613,6 +633,13 @@ export default function Watch() {
         <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/90 gap-4">
           <div className="w-14 h-14 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
           <p className="text-white/60 text-sm">Загрузка...</p>
+        </div>
+      )}
+
+      {!streamLoading && !stream?.url && (
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/90 gap-3 px-4 text-center">
+          <p className="text-white font-semibold">Поток недоступен</p>
+          <p className="text-white/60 text-sm">Попробуйте выбрать другую озвучку или эпизод.</p>
         </div>
       )}
     </div>
