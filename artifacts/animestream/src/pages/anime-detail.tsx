@@ -244,6 +244,7 @@ export default function AnimeDetail() {
 
   const addToLibrary = useAddToLibrary();
   const [showAllEpisodes, setShowAllEpisodes] = useState(false);
+  const [showLibraryStatuses, setShowLibraryStatuses] = useState(false);
 
   const visibleEpisodes = showAllEpisodes
     ? (episodes?.episodes ?? [])
@@ -370,8 +371,9 @@ export default function AnimeDetail() {
                 </Link>
               )}
 
-              <div className="relative group">
+              <div className="relative">
                 <button
+                  onClick={() => setShowLibraryStatuses((v) => !v)}
                   className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-lg bg-white/10 hover:bg-white/15 text-white font-medium text-sm transition-colors"
                   data-testid="button-add-library"
                 >
@@ -381,11 +383,11 @@ export default function AnimeDetail() {
                     <><Plus className="w-4 h-4" />В библиотеку</>
                   )}
                 </button>
-                <div className="absolute top-full left-0 mt-1 w-44 rounded-xl bg-card border border-border shadow-2xl shadow-black/50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
+                <div className={cn("absolute top-full left-0 mt-1 w-44 rounded-xl bg-card border border-border shadow-2xl shadow-black/50 transition-all z-20", showLibraryStatuses ? "opacity-100 visible" : "opacity-0 invisible")}>
                   {Object.entries(STATUS_LABELS).map(([value, label]) => (
                     <button
                       key={value}
-                      onClick={() => handleAddToLibrary(value)}
+                      onClick={() => { handleAddToLibrary(value); setShowLibraryStatuses(false); }}
                       className="w-full text-left px-4 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/5 first:rounded-t-xl last:rounded-b-xl transition-colors"
                       data-testid={`button-library-${value}`}
                     >

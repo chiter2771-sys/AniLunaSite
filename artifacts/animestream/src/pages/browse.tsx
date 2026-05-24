@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Filter } from "lucide-react";
+import { Filter, ChevronDown } from "lucide-react";
 import { useListAnime, getListAnimeQueryKey } from "@workspace/api-client-react";
 import { AnimeCard, AnimeCardSkeleton } from "@/components/anime-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const GENRES = [
   { value: "1", label: "Боевик" },
@@ -48,6 +49,8 @@ export default function Browse() {
   const [type, setType] = useState<string>("");
   const [status, setStatus] = useState<string>("");
   const [page, setPage] = useState(1);
+  const [genreModalOpen, setGenreModalOpen] = useState(false);
+  const [yearModalOpen, setYearModalOpen] = useState(false);
 
   const params = {
     page,
@@ -86,25 +89,27 @@ export default function Browse() {
         <div className="flex flex-wrap gap-2 items-center">
           <Filter className="w-4 h-4 text-white/50 shrink-0" />
 
-          <Select value={genre} onValueChange={(v) => { setGenre(v === "all" ? "" : v); setPage(1); }}>
-            <SelectTrigger className="w-36 bg-card border-border text-sm" data-testid="select-genre">
-              <SelectValue placeholder="Жанр" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все жанры</SelectItem>
-              {GENRES.map((g) => <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-card border-border text-sm text-white/80 hover:text-white"
+            onClick={() => setGenreModalOpen(true)}
+            data-testid="button-open-genre-modal"
+          >
+            {genre ? (GENRES.find((g) => g.value === genre)?.label ?? "Жанр") : "Жанр"}
+            <ChevronDown className="w-4 h-4 ml-1" />
+          </Button>
 
-          <Select value={year} onValueChange={(v) => { setYear(v === "all" ? "" : v); setPage(1); }}>
-            <SelectTrigger className="w-24 bg-card border-border text-sm" data-testid="select-year">
-              <SelectValue placeholder="Год" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Любой год</SelectItem>
-              {YEARS.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-card border-border text-sm text-white/80 hover:text-white"
+            onClick={() => setYearModalOpen(true)}
+            data-testid="button-open-year-modal"
+          >
+            {year || "Год"}
+            <ChevronDown className="w-4 h-4 ml-1" />
+          </Button>
 
           <Select value={type} onValueChange={(v) => { setType(v === "all" ? "" : v); setPage(1); }}>
             <SelectTrigger className="w-28 bg-card border-border text-sm" data-testid="select-type">
@@ -178,6 +183,56 @@ export default function Browse() {
           </Button>
         </div>
       )}
+
+      <Dialog open={genreModalOpen} onOpenChange={setGenreModalOpen}>
+        <DialogContent className="max-w-md bg-card border-border text-white">
+          <DialogHeader>
+            <DialogTitle>Выбор жанра</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto space-y-1 pr-1">
+            <button
+              onClick={() => { setGenre(""); setPage(1); setGenreModalOpen(false); }}
+              className={cn("w-full text-left px-3 py-2 rounded-lg text-sm transition-colors", !genre ? "bg-primary/20 text-primary" : "hover:bg-white/5 text-white/80")}
+            >
+              Все жанры
+            </button>
+            {GENRES.map((g) => (
+              <button
+                key={g.value}
+                onClick={() => { setGenre(g.value); setPage(1); setGenreModalOpen(false); }}
+                className={cn("w-full text-left px-3 py-2 rounded-lg text-sm transition-colors", genre === g.value ? "bg-primary/20 text-primary" : "hover:bg-white/5 text-white/80")}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={yearModalOpen} onOpenChange={setYearModalOpen}>
+        <DialogContent className="max-w-md bg-card border-border text-white">
+          <DialogHeader>
+            <DialogTitle>Выбор года</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto space-y-1 pr-1">
+            <button
+              onClick={() => { setYear(""); setPage(1); setYearModalOpen(false); }}
+              className={cn("w-full text-left px-3 py-2 rounded-lg text-sm transition-colors", !year ? "bg-primary/20 text-primary" : "hover:bg-white/5 text-white/80")}
+            >
+              Любой год
+            </button>
+            {YEARS.map((y) => (
+              <button
+                key={y}
+                onClick={() => { setYear(y); setPage(1); setYearModalOpen(false); }}
+                className={cn("w-full text-left px-3 py-2 rounded-lg text-sm transition-colors", year === y ? "bg-primary/20 text-primary" : "hover:bg-white/5 text-white/80")}
+              >
+                {y}
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

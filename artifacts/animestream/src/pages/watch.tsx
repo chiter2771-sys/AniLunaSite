@@ -532,7 +532,7 @@ export default function Watch() {
           )}
 
           <button
-            onClick={() => setShowSidebar(!showSidebar)}
+            onClick={() => { setShowSidebar(!showSidebar); setShowTranslationPicker(false); setShowQualityPicker(false); }}
             className="p-2 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors"
             data-testid="button-toggle-sidebar"
           >
