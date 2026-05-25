@@ -300,14 +300,8 @@ router.get("/anime/:kodikId/stream/:episode/:translationId", async (req, res): P
       return;
     }
 
-    // Fall back to Kodik iframe
-    res.json({
-      url: iframeUrl,
-      type: "iframe",
-      qualities: [{ label: "Kodik Player", url: iframeUrl }],
-      subtitles: [],
-      translation: result.translation ?? null,
-    });
+    // We only return direct stream URLs for the custom player.
+    res.status(502).json({ error: "Direct stream is unavailable for this episode right now" });
   } catch (err) {
     logger.error({ err }, "Error fetching stream");
     res.status(500).json({ error: "Failed to fetch stream" });

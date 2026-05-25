@@ -3,8 +3,48 @@ import { db, libraryTable } from "@workspace/db";
 import { and, eq, desc } from "drizzle-orm";
 import { getOrCreateUser } from "../lib/session";
 import { AddToLibraryBody, UpdateLibraryEntryBody } from "@workspace/api-zod";
+import { decodeKodikId, kodikGetById } from "../lib/kodik";
 
 const router = Router();
+
+router.post("/library/check-updates", async (req, res): Promise<void> => {
+  const userId = await getOrCreateUser(req);
+
+  const entries = await db
+    .select()
+    .from(libraryTable)
+    .where(eq(libraryTable.userId, userId));
+
+  let checked = 0;
+  let updated = 0;
+  const changed: Array<{ animeId: string; animeTitle: string; oldTotalEpisodes: number | null; newTotalEpisodes: number | null }> = [];
+
+  for (const entry of entries) {
+    const decodedAnimeId = decodeKodikId(entry.animeId);
+    const anime = await kodikGetById(decodedAnimeId);
+    checked += 1;
+
+    if (!anime) continue;
+
+    const newTotal = anime.episodes_count ?? anime.material_data?.episodes_total ?? anime.episodes_aired ?? null;
+    if (newTotal !== null && (entry.totalEpisodes ?? 0) < newTotal) {
+      await db
+        .update(libraryTable)
+        .set({ totalEpisodes: Number(newTotal), updatedAt: new Date() })
+        .where(and(eq(libraryTable.id, entry.id), eq(libraryTable.userId, userId)));
+
+      updated += 1;
+      changed.push({
+        animeId: entry.animeId,
+        animeTitle: entry.animeTitle,
+        oldTotalEpisodes: entry.totalEpisodes,
+        newTotalEpisodes: Number(newTotal),
+      });
+    }
+  }
+
+  res.json({ checked, updated, changed });
+});
 
 router.get("/library", async (req, res): Promise<void> => {
   const userId = await getOrCreateUser(req);
