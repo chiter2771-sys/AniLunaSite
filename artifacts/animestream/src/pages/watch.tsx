@@ -63,8 +63,7 @@ export default function Watch() {
     { query: { queryKey: getGetAnimeStreamQueryKey(kodikId, episode, translationId) } }
   );
 
-  const streamType = (stream as { type?: string } | undefined)?.type ?? "iframe";
-  const isIframePlayer = !!(stream?.url && (streamType === "iframe" || stream.url.includes("kodik")));
+  const streamType = (stream as { type?: string } | undefined)?.type ?? "hls";
   const { data: episodes } = useGetAnimeEpisodes(kodikId, {
     query: { queryKey: getGetAnimeEpisodesQueryKey(kodikId) },
   });
@@ -90,7 +89,7 @@ export default function Watch() {
   // HLS setup
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !activeQualityUrl || isIframePlayer) return;
+    if (!video || !activeQualityUrl) return;
 
     setBuffering(true);
 
@@ -123,7 +122,7 @@ export default function Watch() {
         toast({ title: "Поток не поддерживается", variant: "destructive" });
         setBuffering(false);
       }
-    } else if (!isIframePlayer) {
+    } else {
       video.src = url;
       video.play().catch(() => {});
     }
@@ -143,7 +142,7 @@ export default function Watch() {
         hlsRef.current = null;
       }
     };
-  }, [activeQualityUrl, kodikId, episode, isIframePlayer, streamType, toast]);
+  }, [activeQualityUrl, kodikId, episode, streamType, toast]);
 
   // Video events
   useEffect(() => {
@@ -352,27 +351,13 @@ export default function Watch() {
         />
       )}
 
-      {/* Player: iframe for Kodik, video for HLS */}
-      {isIframePlayer ? (
-        stream?.url && (
-          <iframe
-            key={stream.url}
-            src={stream.url}
-            className="absolute inset-0 w-full h-full z-10"
-            allowFullScreen
-            allow="autoplay; fullscreen"
-            frameBorder="0"
-            scrolling="no"
-          />
-        )
-      ) : (
-        <video
-          ref={videoRef}
-          className="w-full h-full object-contain z-10"
-          playsInline
-          onClick={togglePlay}
-        />
-      )}
+      {/* Custom player only: always native video */}
+      <video
+        ref={videoRef}
+        className="w-full h-full object-contain z-10"
+        playsInline
+        onClick={togglePlay}
+      />
 
       {/* Buffering spinner */}
       {buffering && (
@@ -449,7 +434,7 @@ export default function Watch() {
       <div
         className={cn(
           "absolute inset-0 z-20 flex flex-col transition-opacity pointer-events-none",
-          isIframePlayer ? "opacity-100" : (showControls ? "opacity-100" : "opacity-0")
+          showControls ? "opacity-100" : "opacity-0"
         )}
       >
         {/* Top bar */}
@@ -501,7 +486,7 @@ export default function Watch() {
           )}
 
           {/* Quality picker button (HLS only) */}
-          {!isIframePlayer && streamQualities.length > 1 && (
+          {streamQualities.length > 1 && (
             <div className="relative">
               <button
                 onClick={() => { setShowQualityPicker(!showQualityPicker); setShowTranslationPicker(false); }}
@@ -532,7 +517,7 @@ export default function Watch() {
           )}
 
           <button
-            onClick={() => setShowSidebar(!showSidebar)}
+            onClick={() => { setShowSidebar(!showSidebar); setShowTranslationPicker(false); setShowQualityPicker(false); }}
             className="p-2 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors"
             data-testid="button-toggle-sidebar"
           >
@@ -542,8 +527,8 @@ export default function Watch() {
 
         {/* Center play area — hidden for iframe */}
         <div
-          className={cn("flex-1 flex items-center justify-center gap-8 pointer-events-auto cursor-pointer", isIframePlayer && "pointer-events-none opacity-0")}
-          onClick={!isIframePlayer ? togglePlay : undefined}
+          className="flex-1 flex items-center justify-center gap-8 pointer-events-auto cursor-pointer"
+          onClick={togglePlay}
         >
           <button
             onClick={(e) => { e.stopPropagation(); goPrevEpisode(); }}
@@ -567,7 +552,7 @@ export default function Watch() {
         </div>
 
         {/* Bottom controls — hidden for iframe */}
-        <div className={cn("px-4 pb-4 bg-gradient-to-t from-black/80 to-transparent pointer-events-auto", isIframePlayer && "hidden")}>
+        <div className="px-4 pb-4 bg-gradient-to-t from-black/80 to-transparent pointer-events-auto">
           {/* Progress bar */}
           <div
             className="relative h-1 rounded-full bg-white/20 cursor-pointer mb-4 group"
